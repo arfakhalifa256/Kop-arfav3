@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neraca Koperasi</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+:root{
+  --primary:#1e90ff;--primary-dark:#0f3057;--card:#fff;--bg:#f4f6f9;--text:#1f2937;
+  --muted:#6b7280;--success:#16a34a;--danger:#dc2626;--border:#e2e8f0;
+  --shadow:0 4px 15px rgba(0,0,0,0.08);--radius:16px;
+}
+
+body{background:var(--bg);padding:12px;color:var(--text);font-size:13px;}
+
+.header{
+  background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+  color:white;padding:14px 16px;border-radius:var(--radius);
+  display:flex;justify-content:space-between;align-items:center;
+  box-shadow:var(--shadow);margin-bottom:16px;
+}
+.header-left{display:flex;align-items:center;gap:10px;}
+.btn-back{
+  background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);
+  color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  transition:all 0.2s;
+}
+.btn-back:active{transform:scale(0.95);}
+.header-title{font-weight:700;font-size:16px;letter-spacing:0.3px;}
+.tanggal{font-size:11px;opacity:0.9;margin-top:2px;}
+
+.card{
+  background:var(--card);border-radius:var(--radius);padding:16px;
+  margin-bottom:14px;box-shadow:var(--shadow);border:1px solid var(--border);
+}
+.card h2{
+  margin-bottom:12px;color:var(--primary-dark);font-size:15px;
+  display:flex;align-items:center;gap:8px;padding-bottom:10px;
+  border-bottom:2px solid var(--primary);
+}
+
+.row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:9px 0;border-bottom:1px solid #f1f5f9;font-size:13px;
+}
+.row:last-child{border-bottom:none;}
+.row-label{color:var(--muted);}
+.row-value{font-weight:600;color:var(--text);}
+.row.subtotal{margin-top:6px;padding-top:10px;border-top:1px solid var(--border);font-weight:600;}
+.row.total{
+  margin-top:8px;padding-top:12px;border-top:2px solid var(--text);
+  font-weight:700;font-size:15px;color:var(--primary-dark);
+}
+
+.balance-box{
+  padding:14px;border-radius:12px;text-align:center;font-size:14px;
+  font-weight:700;margin-top:8px;
+}
+.balance{background:#dcfce7;color:#166534;border:1px solid #bbf7d0;}
+.not-balance{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;}
+.selisih{font-size:12px;margin-top:4px;font-weight:500;}
+.loading{text-align:center;padding:40px;color:var(--muted);}
+
+@media(max-width:600px){
+  body{padding:10px;font-size:12px;}
+  .header{padding:12px;border-radius:12px;}
+  .header-title{font-size:15px;}
+  .card{padding:14px;border-radius:14px;}
+  .card h2{font-size:14px;}
+  .row{font-size:12px;padding:8px 0;}
+  .row.total{font-size:14px;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <button class="btn-back" onclick="kembali()">←</button>
+    <div>
+      <div class="header-title">NERACA KOPERASI</div>
+      <div class="tanggal" id="tglNeraca">Memuat...</div>
+    </div>
+  </div>
+</div>
+
+<div id="loading" class="loading">Memuat data...</div>
+
+<div id="content" style="display:none">
+  <div class="card">
+    <h2>💰 AKTIVA</h2>
+    <div class="row">
+      <span class="row-label">Kas - Cash</span>
+      <span class="row-value" id="saldoAwalCash">Rp 0</span>
+    </div>
+    <div class="row">
+      <span class="row-label">Kas - Bank</span>
+      <span class="row-value" id="saldoAwalBank">Rp 0</span>
+    </div>
+    <div class="row subtotal">
+      <span>Total Kas</span>
+      <span id="saldoKas">Rp 0</span>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <span class="row-label">Piutang Pinjaman</span>
+      <span class="row-value" id="piutang">Rp 0</span>
+    </div>
+
+    <div class="row total">
+      <span>TOTAL AKTIVA</span>
+      <span id="totalAktiva">Rp 0</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📊 PASIVA</h2>
+    <div class="row">
+      <span class="row-label">Simpanan Pokok</span>
+      <span class="row-value" id="simpananPokok">Rp 0</span>
+    </div>
+    <div class="row">
+      <span class="row-label">Simpanan Wajib</span>
+      <span class="row-value" id="simpananWajib">Rp 0</span>
+    </div>
+    <div class="row">
+      <span class="row-label">Simpanan Sukarela</span>
+      <span class="row-value" id="simpananSukarela">Rp 0</span>
+    </div>
+    <div class="row subtotal">
+      <span>Total Simpanan</span>
+      <span id="totalSimpanan">Rp 0</span>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <span class="row-label">SHU / Laba Ditahan</span>
+      <span class="row-value" id="shu">Rp 0</span>
+    </div>
+
+    <div class="row total">
+      <span>TOTAL PASIVA</span>
+      <span id="totalPasiva">Rp 0</span>
+    </div>
+  </div>
+
+  <div id="statusNeraca" class="balance-box balance">
+    ✓ Neraca Seimbang
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+function rupiah(n){
+  return "Rp " + Number(n || 0).toLocaleString("id-ID");
+}
+
+// FIX: Tombol back global
+window.kembali = function(){
+  window.history.back();
+}
+
+db.ref("/").on("value", snap=>{
+  const data = snap.val() || {};
+  
+  // 1. SALDO AWAL - ambil cash & bank terpisah
+  let saldoAwalCash = 0, saldoAwalBank = 0;
+  
+  if(data.kas && data.kas.saldoAwal){
+    saldoAwalCash = Number(data.kas.saldoAwal.cash) || 0;
+    saldoAwalBank = Number(data.kas.saldoAwal.bank) || 0;
+  }
+  else if(data.saldoAwal){
+    saldoAwalCash = Number(data.saldoAwal.cash) || 0;
+    saldoAwalBank = Number(data.saldoAwal.bank) || 0;
+  }
+  else {
+    // Fallback kalo masih pake field lama
+    saldoAwalCash = Number(data.saldoAwalCash) || 0;
+    saldoAwalBank = Number(data.saldoAwalBank) || 0;
+  }
+
+  // 2. MUTASI KAS - PISAH PER SUMBER
+  const transaksiKas = data.kas?.transaksi || data.transaksi || data.kas || {};
+  let cashMasuk = 0, cashKeluar = 0, bankMasuk = 0, bankKeluar = 0;
+  
+  Object.values(transaksiKas).forEach(t=>{
+    // Skip kalo bukan transaksi
+    if(!t || typeof t !== 'object' || !t.tipe) return;
+    
+    const jumlah = Number(t.jumlah) || 0;
+    const sumber = (t.sumberKas || t.metode || "cash").toLowerCase();
+    const tipe = t.tipe;
+
+    if(tipe === "masuk"){
+      if(sumber === "bank") bankMasuk += jumlah;
+      else cashMasuk += jumlah;
+    } else {
+      if(sumber === "bank") bankKeluar += jumlah;
+      else cashKeluar += jumlah;
+    }
+  });
+
+  // 3. SALDO AKHIR PER SUMBER
+  const saldoKasCash = saldoAwalCash + cashMasuk - cashKeluar;
+  const saldoKasBank = saldoAwalBank + bankMasuk - bankKeluar;
+  const saldoKas = saldoKasCash + saldoKasBank;
+
+  // 4. PIUTANG PINJAMAN - hitung sisa beneran
+  const pinjaman = data.pinjaman || {};
+  const angsuran = data.angsuran || {};
+  let totalPiutang = 0;
+
+  Object.entries(pinjaman).forEach(([id, p])=>{
+    let totalPinjam = Number(p.jumlah) || 0;
+    let totalBayar = 0;
+
+    // Jumlahin angsuran pokok untuk pinjaman ini
+    Object.values(angsuran).forEach(a=>{
+      if(a.pinjamanId === id){
+        totalBayar += Number(a.jumlah) || 0;
+      }
+    });
+
+    let sisa = totalPinjam - totalBayar;
+    if(sisa > 0) totalPiutang += sisa;
+  });
+
+  const totalAktiva = saldoKas + totalPiutang;
+
+  // 5. PASIVA - SIMPANAN
+  const simpanan = data.simpanan || {};
+  let pokok = 0, wajib = 0, sukarela = 0;
+  Object.values(simpanan).forEach(s=>{
+    const jenis = (s.jenis || "").toLowerCase();
+    const jumlah = Number(s.jumlah) || 0;
+    if(jenis.includes("pokok")) pokok += jumlah;
+    else if(jenis.includes("wajib")) wajib += jumlah;
+    else sukarela += jumlah;
+  });
+  const totalSimpanan = pokok + wajib + sukarela;
+
+  // 6. SHU = Aktiva - Simpanan
+  const shu = totalAktiva - totalSimpanan;
+  const totalPasiva = totalSimpanan + shu;
+
+  // 7. RENDER
+  document.getElementById("saldoAwalCash").innerText = rupiah(saldoKasCash);
+  document.getElementById("saldoAwalBank").innerText = rupiah(saldoKasBank);
+  document.getElementById("saldoKas").innerText = rupiah(saldoKas);
+  document.getElementById("piutang").innerText = rupiah(totalPiutang);
+  document.getElementById("totalAktiva").innerText = rupiah(totalAktiva);
+
+  document.getElementById("simpananPokok").innerText = rupiah(pokok);
+  document.getElementById("simpananWajib").innerText = rupiah(wajib);
+  document.getElementById("simpananSukarela").innerText = rupiah(sukarela);
+  document.getElementById("totalSimpanan").innerText = rupiah(totalSimpanan);
+  document.getElementById("shu").innerText = rupiah(shu);
+  document.getElementById("totalPasiva").innerText = rupiah(totalPasiva);
+
+  const selisih = totalAktiva - totalPasiva;
+  const status = document.getElementById("statusNeraca");
+  if(Math.abs(selisih) < 1){
+    status.className = "balance-box balance";
+    status.innerHTML = "✓ Neraca Seimbang";
+  }else{
+    status.className = "balance-box not-balance";
+    status.innerHTML = `✘ Tidak Seimbang<div class="selisih">Selisih ${rupiah(Math.abs(selisih))}</div>`;
+  }
+
+  document.getElementById("tglNeraca").innerText = "Per " + new Date().toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"});
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("content").style.display = "block";
+});
+</script>
+
+</body>
+</html>

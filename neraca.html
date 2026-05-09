@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laporan Kas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #1e90ff;
+  --primary-dark: #0f3057;
+  --card: #ffffff;
+  --bg: #f4f6f9;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --shadow: 0 3px 10px rgba(0,0,0,0.08);
+  --radius: 12px;
+}
+
+body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+
+/* ===== HEADER ===== */
+header {
+  background: linear-gradient(to right, var(--primary), var(--primary-dark));
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-left { display: flex; align-items: center; gap: 10px; }
+
+.btn-back {
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.btn-back:hover { background: rgba(255,255,255,0.25); transform: translateX(-2px); }
+
+.header-btns { display: flex; gap: 6px; align-items: center; }
+.header-btns button {
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s;
+}
+.header-btns button:hover { background: rgba(255,255,255,0.25); }
+
+/* ===== CONTAINER ===== */
+.container { padding: 14px; max-width: 1200px; margin: 0 auto; }
+.page-title { text-align: center; margin: 8px 0 16px; }
+.page-title h3 { font-size: 16px; font-weight: 700; color: var(--primary-dark); letter-spacing: 0.5px; margin: 0; }
+.page-title h4 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 4px 0 0; }
+
+/* ===== CARD ===== */
+.card {
+  background: var(--card);
+  padding: 14px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  border: 1px solid #e2e8f0;
+}
+.card h4 { margin: 0 0 12px 0; font-size: 14px; font-weight: 700; color: var(--text); }
+
+/* ===== SUMMARY ===== */
+.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.summary-item { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }
+.summary-item.label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+.summary-item.value { font-size: 15px; font-weight: 700; color: var(--text); }
+.text-success { color: var(--success)!important; }
+.text-danger { color: var(--danger)!important; }
+
+/* ===== TABLE ===== */
+.table-wrap { overflow-x: auto; margin-top: 12px; }
+.table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.table th,.table td { border: 1px solid #e2e8f0; padding: 8px 6px; }
+.table th { background: #f8fafc; font-weight: 600; color: var(--text); font-size: 10px; text-transform: uppercase; }
+.table tr:hover { background: #f8fafc; }
+.text-right { text-align: right; }
+
+/* ===== MOBILE ===== */
+@media (max-width:768px){
+  body { font-size: 12px; }
+ .container { padding: 10px; }
+ .card { padding: 12px; }
+ .summary-grid { grid-template-columns: 1fr; }
+ .table { font-size: 10px; }
+ .table th,.table td { padding: 6px 4px; }
+ .header-btns button { padding: 5px 8px; font-size: 10px; }
+}
+
+@media print {
+  header,.header-btns { display: none!important; }
+  body { background: white; }
+ .card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <button class="btn-back" onclick="kembali()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+    </button>
+  </div>
+  <div class="header-btns">
+    <button onclick="window.print()">Print</button>
+    <button onclick="shareWA()">WA</button>
+    <button onclick="exportPDF()">PDF</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="page-title">
+    <h3>KOPERASI DRIVER KHALIFA</h3>
+    <h4>NERACA KAS Terpisah</h4>
+  </div>
+
+  <!-- TOTAL -->
+  <div class="card">
+    <h4>💰 TOTAL KESELURUHAN</h4>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="label">Saldo</div>
+        <div class="value" id="totalSaldo">Rp 0</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">Total Masuk</div>
+        <div class="value text-success" id="totalMasuk">Rp 0</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">Total Keluar</div>
+        <div class="value text-danger" id="totalKeluar">Rp 0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CASH -->
+  <div class="card">
+    <h4>💵 CASH</h4>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="label">Saldo</div>
+        <div class="value" id="saldoCash">Rp 0</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">Masuk</div>
+        <div class="value text-success" id="masukCash">Rp 0</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">Keluar</div>
+        <div class="value text-danger" id="keluarCash">Rp 0</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Tanggal</th>
+            <th>Keterangan</th>
+            <th class="text-right">Masuk</th>
+            <th class="text-right">Keluar</th>
+            <th class="text-right">Saldo</th>
+          </tr>
+        </thead>
+        <tbody id="tableCash"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- BANK -->
+  <div class="card">
+    <h4>🏦 BANK</h4>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="label">Saldo</div>
+        <div class="value" id="saldoBank">Rp 0</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">Masuk</div>
+        <div class="value text-success" id="masukBank">Rp 0</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">Keluar</div>
+        <div class="value text-danger" id="keluarBank">Rp 0</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Tanggal</th>
+            <th>Keterangan</th>
+            <th class="text-right">Masuk</th>
+            <th class="text-right">Keluar</th>
+            <th class="text-right">Saldo</th>
+          </tr>
+        </thead>
+        <tbody id="tableBank"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const kasRef = ref(db, "/kas");
+
+let data = [];
+let saldoAwalCash = 0;
+
+async function loadData() {
+  const snap = await get(kasRef);
+
+  if (!snap.exists()) return;
+
+  const raw = snap.val();
+
+  // 🔥 SALDO AWAL AMAN (kalau tidak ada = 0)
+  saldoAwalCash = raw?.saldoAwalCash ? Number(raw.saldoAwalCash) : 0;
+
+  data = [];
+
+  for (const k in raw) {
+    if (k === "saldoAwalCash") continue;
+
+    let i = raw[k];
+
+    data.push({
+      tanggal: i.tanggal ? new Date(i.tanggal) : new Date(0),
+      ket: i.keterangan || "-",
+      sumber: (i.sumberKas || "cash").toLowerCase(),
+      masuk: i.tipe === "masuk" ? Number(i.jumlah) : 0,
+      keluar: i.tipe === "keluar" ? Number(i.jumlah) : 0
+    });
+  }
+
+  render();
+}
+
+function render() {
+  data.sort((a, b) => a.tanggal - b.tanggal);
+
+  let cash = data.filter(i => i.sumber === "cash");
+  let bank = data.filter(i => i.sumber === "bank");
+
+  hitung("tableCash", "saldoCash", "masukCash", "keluarCash", cash, saldoAwalCash);
+  hitung("tableBank", "saldoBank", "masukBank", "keluarBank", bank, 0);
+
+  let totalMasuk = data.reduce((a, i) => a + i.masuk, 0);
+  let totalKeluar = data.reduce((a, i) => a + i.keluar, 0);
+  let totalSaldo = totalMasuk - totalKeluar;
+
+  document.getElementById("totalSaldo").innerText = "Rp " + totalSaldo.toLocaleString("id-ID");
+  document.getElementById("totalMasuk").innerText = "Rp " + totalMasuk.toLocaleString("id-ID");
+  document.getElementById("totalKeluar").innerText = "Rp " + totalKeluar.toLocaleString("id-ID");
+}
+
+function hitung(tbodyId, saldoId, masukId, keluarId, arr, saldoAwal = 0) {
+  let tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = "";
+
+  let masuk = 0;
+  let keluar = 0;
+
+  let runningSaldo = saldoAwal;
+
+  if (arr.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#6b7280;padding:20px">Tidak ada data</td></tr>`;
+  }
+
+  arr.forEach(i => {
+    masuk += i.masuk;
+    keluar += i.keluar;
+
+    runningSaldo += i.masuk - i.keluar;
+
+    let tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i.tanggal.toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"})}</td>
+      <td>${i.ket}</td>
+      <td class="text-right text-success">${i.masuk ? "Rp " + i.masuk.toLocaleString("id-ID") : "-"}</td>
+      <td class="text-right text-danger">${i.keluar ? "Rp " + i.keluar.toLocaleString("id-ID") : "-"}</td>
+      <td class="text-right">Rp ${runningSaldo.toLocaleString("id-ID")}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById(saldoId).innerText = "Rp " + runningSaldo.toLocaleString("id-ID");
+  document.getElementById(masukId).innerText = "Rp " + masuk.toLocaleString("id-ID");
+  document.getElementById(keluarId).innerText = "Rp " + keluar.toLocaleString("id-ID");
+}
+window.exportPDF = function(){
+  if(data.length === 0){
+    alert("Data belum siap!");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF("p","mm","a4");
+  const date = new Date().toLocaleDateString("id-ID");
+
+  doc.setFontSize(14);
+  doc.setFont("helvetica","bold");
+  doc.text("KOPERASI DRIVER KHALIFA", 105, 15, {align:"center"});
+  doc.setFontSize(12);
+  doc.text("LAPORAN KAS TERPISAH", 105, 22, {align:"center"});
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica","normal");
+  doc.text(`Tanggal Cetak: ${date}`, 14, 30);
+
+  // Summary
+  doc.setFont("helvetica","bold");
+  doc.text("RINGKASAN", 14, 38);
+  doc.setFont("helvetica","normal");
+  doc.text(document.getElementById("totalSaldo").innerText,14,44);
+  doc.text(document.getElementById("totalMasuk").innerText,14,49);
+  doc.text(document.getElementById("totalKeluar").innerText,14,54);
+
+  function buatTable(title, arr, startY){
+  let rows = [];
+  let saldo = 0;
+    
+
+  arr.forEach(i=>{
+    saldo += i.masuk - i.keluar;
+
+    rows.push([
+      i.tanggal.toLocaleDateString("id-ID"),
+      i.ket,
+      i.masuk ? "Rp " + i.masuk.toLocaleString("id-ID") : "-",
+      i.keluar ? "Rp " + i.keluar.toLocaleString("id-ID") : "-",
+      "Rp " + saldo.toLocaleString("id-ID")
+    ]);
+  });
+
+  doc.setFont("helvetica","bold");
+  doc.text(title,14,startY);
+
+  doc.autoTable({
+    startY: startY + 3,
+    head: [["Tanggal","Keterangan","Masuk","Keluar","Saldo"]],
+    body: rows,
+    styles:{fontSize:8,cellPadding:2},
+    headStyles:{fillColor:[30,144,255],textColor:255},
+    columnStyles:{
+      2:{halign:"right"},
+      3:{halign:"right"},
+      4:{halign:"right"}
+    }
+  });
+
+  return doc.lastAutoTable.finalY + 8;
+}
+
+  const cash = data.filter(i=>i.sumber==="cash");
+  const bank = data.filter(i=>i.sumber==="bank");
+
+  let y = 62;
+  y = buatTable("CASH", cash, y);
+  buatTable("BANK", bank, y);
+
+  const today = new Date().toLocaleDateString("id-ID").replace(/\//g,"-");
+  doc.save(`Laporan_Kas_${today}.pdf`);
+}
+
+window.shareWA = function(){
+  let text = "*LAPORAN KAS KOPERASI DRIVER KHALIFA*\n\n";
+  text += `*TOTAL*\n`;
+  text += `Saldo: ${document.getElementById("totalSaldo").innerText}\n`;
+  text += `Masuk: ${document.getElementById("totalMasuk").innerText}\n`;
+  text += `Keluar: ${document.getElementById("totalKeluar").innerText}\n\n`;
+
+  text += `*CASH*\nSaldo: ${document.getElementById("saldoCash").innerText}\n`;
+  text += `Masuk: ${document.getElementById("masukCash").innerText}\n`;
+  text += `Keluar: ${document.getElementById("keluarCash").innerText}\n\n`;
+
+  text += `*BANK*\nSaldo: ${document.getElementById("saldoBank").innerText}\n`;
+  text += `Masuk: ${document.getElementById("masukBank").innerText}\n`;
+  text += `Keluar: ${document.getElementById("keluarBank").innerText}`;
+
+  window.open("https://wa.me/?text="+encodeURIComponent(text));
+}
+
+window.kembali = function(){
+  window.location.href = "laporan.html";
+}
+
+loadData();
+  </script>
+
+</body>
+</html>
