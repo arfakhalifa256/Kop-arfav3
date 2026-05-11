@@ -448,21 +448,34 @@ function tgl(t){
 onValue(kasRef,(snap)=>{
   laporanData=[];
   if(snap.exists()){
-    const data=snap.val();
-    for(const k in data){
-      const item=data[k];
+    const raw=snap.val();
+
+    // Ambil saldo awal
+    const saldoAwal = raw?.saldoAwalCash? Number(raw.saldoAwalCash) : 0;
+
+    // Ambil transaksi: prioritas /kas/transaksi, fallback ke root /kas buat data lama
+    const transaksi = raw.transaksi || raw;
+
+    for(const k in transaksi){
+      // Skip kalo key-nya saldoAwalCash atau transaksi itu sendiri
+      if(k === "saldoAwalCash" || k === "transaksi") continue;
+
+      const item = transaksi[k];
+
+      // Skip kalo bukan object transaksi valid
+      if(!item || typeof item!== 'object' ||!item.tanggal) continue;
+
       laporanData.push({
-        tanggal:item.tanggal? new Date(item.tanggal) : new Date(),
-        keterangan:item.keterangan?? "-",
-        sumber:(item.sumberKas?? "cash").toLowerCase(),
-        masuk:item.tipe==="masuk"? Number(item.jumlah) : 0,
-        keluar:item.tipe==="keluar"? Number(item.jumlah) : 0
+        tanggal: item.tanggal? new Date(item.tanggal) : new Date(0),
+        keterangan: item.keterangan?? "-",
+        sumber: (item.sumberKas?? "cash").toLowerCase(),
+        masuk: item.tipe==="masuk"? Number(item.jumlah) : 0,
+        keluar: item.tipe==="keluar"? Number(item.jumlah) : 0
       });
     }
   }
   tampilkan(laporanData);
 });
-
 function tampilkan(data){
   const tbody=document.getElementById("laporanKas");
   tbody.innerHTML="";

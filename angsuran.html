@@ -24,7 +24,7 @@ position:sticky;top:0;z-index:1000;
 .brand img{width:32px;height:32px;border-radius:50%;object-fit:cover;background:#fff;padding:2px;}
 .brand-text.subtitle{font-size:9px;opacity:0.9;}
 .brand-text.title{font-size:12px;font-weight:700;}
-.menu-btn{font-size:22px;cursor:pointer;background:transparent;border:none;color:#fff;padding:0;}
+.menu-btn{font-size:20px;cursor:pointer;background:transparent;border:none;color:#fff;padding:10;}
 
 /* ===== SIDEBAR ===== */
 .sidebar{
@@ -91,8 +91,7 @@ color:var(--muted);
 font-weight:700;
 color:var(--text);
 }
-/* ===== BUTTON ===== /
-/ ===== BUTTON ===== */
+/* ===== BUTTON ===== */
 .btn-group{
 display:flex;
 gap:8px;
@@ -216,7 +215,42 @@ background:#43a047;
 .badge.bank{
 background:#1e88e5;
 }
+.item-actions{
+display:flex;
+gap:8px;
+margin-top:10px;
+}
 
+.btn-edit,
+.btn-delete{
+flex:1;
+padding:8px;
+border:none;
+border-radius:8px;
+font-size:11px;
+font-weight:600;
+cursor:pointer;
+}
+
+.btn-edit{
+background:#1e88e5;
+color:#fff;
+}
+
+.btn-delete{
+background:#e53935;
+color:#fff;
+}
+  button{
+padding:10px;
+border-radius:8px;
+border:1px solid var(--border);
+background:#fff;
+cursor:pointer;
+font-family:'Poppins',sans-serif;
+font-weight:600;
+transition:.2s;
+}
   </style>    
 </head>    
 <body>   
@@ -234,17 +268,21 @@ background:#1e88e5;
 </div>      
   <div id="overlay" class="overlay"></div> 
   
-  <header>    
-    <div class="brand">    
-    <img src="img/icon-192.png">  
-    <div class="brand-text">    
-  <div class="subtitle">Koperasi</div>    
-  <div class="title">ARFA</div>    
-</div>    
-  <h3>ANGSURAN</h3>    
-<span class="menu-btn" onclick="toggleSidebar()">☰</span>  
-</header>  
-
+    <header>
+  <div class="header-left">
+    <div class="brand">
+      <img src="img/icon-192.png">
+      <div class="brand-text">
+        <div class="subtitle">Koperasi</div>
+        <div class="title">ARFA</div>
+      </div>
+      <h3>ANGSURAN</h3>
+    </div>
+  </div>
+  <div class="header-actions">
+  <span class="menu-btn" onclick="toggleSidebar()">☰</span>
+</div>
+</header>
     <!-- RIWAYAT -->    
 <button class="btn-tampil" onclick="toggleRiwayat()" id="btnTampil">    
   <span class="material-icons" style="font-size:18px;vertical-align:middle;margin-right:6px;">visibility</span>    
@@ -352,12 +390,67 @@ background:#1e88e5;
     </div>    
 </div>    
 </div>  
+  <!-- POPUP EDIT -->
+<div id="popupEditAngsuran" class="modal">
+  <div class="modal-content">
+    
+    <div class="modal-header">
+      <h3>Edit Angsuran</h3>
+      <button class="btn-close" onclick="tutupPopupEdit()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div style="padding:15px;overflow:auto;">
+
+      <div class="form-group">
+        <label>Nama</label>
+        <input type="text" id="editNama" disabled>
+      </div>
+
+      <div class="form-group">
+        <label>Tanggal</label>
+        <input type="date" id="editTanggal">
+      </div>
+
+      <div class="form-group">
+        <label>Metode</label>
+        <select id="editMetode">
+          <option value="cash">Cash</option>
+          <option value="bank">Bank</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Pokok</label>
+        <input type="text" id="editJumlah">
+      </div>
+
+      <div class="form-group">
+        <label>Jasa</label>
+        <input type="text" id="editJasa">
+      </div>
+
+      <div class="btn-group">
+        <button id="btnUpdate">Update Angsuran</button>
+      </div>
+
+    </div>
+  </div>
+</div>
   <div id="toast" class="toast"></div>    
   </body>    
 </html>    
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import {
+  getDatabase,
+  ref,
+  onValue,
+  push,
+  set,
+  update
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
@@ -406,11 +499,12 @@ const kasRef = ref(db,"/kas/transaksi");
 let dataPinjaman = {};
 let dataAngsuran = {};
 let pinIdAktif = null;
+let editAngsuranId = null;
 window.angsuranTerakhirId = null;
 
 /* FORMAT */
 function rupiah(n){
-  return Number(n || 0).toLocaleString("id-ID",{style:"currency",currency:"IDR"});
+  return "Rp " + Number(n || 0).toLocaleString("id-ID");
 }
 function formatTanggal(t){
   return new Date(Number(t)).toLocaleDateString("id-ID",{
@@ -780,17 +874,118 @@ window.toggleRiwayat = function(){
     btnEl.innerHTML = `<span class="material-icons" style="font-size:18px;vertical-align:middle;margin-right:6px;">visibility</span>Lihat Riwayat Angsuran`;
   }
 }
+// ===== EDIT ANGSURAN =====
+window.editAngsuran = function(id){
+  if(role!=="admin") return showToast("Hanya admin!", true);
+  const a = dataAngsuran[id];
+  if(!a) return showToast("Data tidak ditemukan", true);
 
-/* RENDER RIWAYAT */
+  editAngsuranId = id;
+  document.getElementById("editNama").value = a.nama || "";
+  document.getElementById("editTanggal").value = new Date(a.tanggal).toISOString().split("T")[0];
+  document.getElementById("editMetode").value = a.metode || "cash";
+  document.getElementById("editJumlah").value = formatRupiahInput(String(a.jumlah || 0));
+  document.getElementById("editJasa").value = formatRupiahInput(String(a.jasa || 0));
+  document.getElementById("popupEditAngsuran").classList.add("show");
+}
+
+window.tutupPopupEdit = function(){
+  document.getElementById("popupEditAngsuran").classList.remove("show");
+  editAngsuranId = null;
+}
+
+document.getElementById("editJumlah").addEventListener("input",function(){
+  this.value = formatRupiahInput(this.value);
+});
+document.getElementById("editJasa").addEventListener("input",function(){
+  this.value = formatRupiahInput(this.value);
+});
+
+document.getElementById("btnUpdate").onclick = async function(){
+  if(!editAngsuranId) return;
+  if(role!=="admin") return showToast("Hanya admin!", true);
+
+  const a = dataAngsuran[editAngsuranId];
+  const p = dataPinjaman[a.pinjamanId];
+
+  let tanggalInput = document.getElementById("editTanggal").value;
+  let jumlahBaru = getNumber(document.getElementById("editJumlah").value);
+  let jasaBaru = getNumber(document.getElementById("editJasa").value) || 0;
+  let metodeBaru = document.getElementById("editMetode").value;
+
+  if(!tanggalInput) return showToast("Isi tanggal!", true);
+  if(!metodeBaru) return showToast("Pilih metode!", true);
+  if(!jumlahBaru || jumlahBaru <= 0) return showToast("Jumlah harus > 0!", true);
+
+  // VALIDASI SISA PINJAMAN
+  let totalPinjaman = Number(p.jumlah || 0);
+  let totalAngsuranLain = 0;
+  Object.entries(dataAngsuran).forEach(([key,val])=>{
+    if(key!== editAngsuranId && val.pinjamanId === a.pinjamanId){
+      totalAngsuranLain += Number(val.jumlah || 0);
+    }
+  });
+
+  let sisaPinjaman = totalPinjaman - totalAngsuranLain;
+  if(jumlahBaru > sisaPinjaman){
+    return showToast(`Pokok melebihi sisa pinjaman! Sisa: ${rupiah(sisaPinjaman)}`, true);
+  }
+
+  try {
+    let tanggal = new Date(tanggalInput).getTime();
+    let totalKasBaru = jumlahBaru + jasaBaru;
+
+    const updates = {};
+    updates[`/angsuran/${editAngsuranId}/tanggal`] = tanggal;
+    updates[`/angsuran/${editAngsuranId}/jumlah`] = jumlahBaru;
+    updates[`/angsuran/${editAngsuranId}/jasa`] = jasaBaru;
+    updates[`/angsuran/${editAngsuranId}/metode`] = metodeBaru;
+
+    // Update kas juga biar sinkron
+    if(a.kasId){
+      updates[`/kas/transaksi/${a.kasId}/tanggal`] = tanggal;
+      updates[`/kas/transaksi/${a.kasId}/jumlah`] = totalKasBaru;
+      updates[`/kas/transaksi/${a.kasId}/sumberKas`] = metodeBaru;
+      updates[`/kas/transaksi/${a.kasId}/rincian/pokok`] = jumlahBaru;
+      updates[`/kas/transaksi/${a.kasId}/rincian/jasa`] = jasaBaru;
+      updates[`/kas/transaksi/${a.kasId}/keterangan`] = "Angsuran " + p.nama + " (" + p.nomor + ")";
+    }
+
+    await update(ref(db), updates);
+    tutupPopupEdit();
+    showToast("Angsuran berhasil diupdate ✅");
+  } catch (err) {
+    showToast("Gagal update: " + err.message, true);
+  }
+};
+
+// ===== HAPUS ANGSURAN + KAS =====
+window.hapusAngsuran = async function(id){
+  if(role!=="admin") return showToast("Hanya admin!", true);
+  if(!confirm("Hapus angsuran ini? Kas juga ikut kehapus!")) return;
+
+  const a = dataAngsuran[id];
+  if(!a) return showToast("Data tidak ditemukan", true);
+
+  try {
+    const updates = {};
+    updates[`/angsuran/${id}`] = null;
+    if(a.kasId){
+      updates[`/kas/transaksi/${a.kasId}`] = null;
+    }
+    await update(ref(db), updates);
+    showToast("Angsuran berhasil dihapus ✅");
+  } catch (err) {
+    showToast("Gagal hapus: " + err.message, true);
+  }
+};
 function renderRiwayat(){
   const listEl = document.getElementById("listTransaksi");
   let list = Object.entries(dataAngsuran).sort((a,b)=>(b[1].tanggal||0)-(a[1].tanggal||0));
-
   if(list.length===0){
     listEl.innerHTML = `<div class="item"><div class="item-ket">Belum ada data angsuran</div></div>`;
     return;
   }
-
   let html = "";
   list.forEach(([id,a])=>{
     const total = Number(a.jumlah||0) + Number(a.jasa||0);
@@ -807,6 +1002,12 @@ function renderRiwayat(){
           <span class="badge ${a.metode==="bank"?"bank":"cash"}">${(a.metode || "cash").toUpperCase()}</span>
         </div>
         <div class="item-waktu">${formatTanggal(a.tanggal)}</div>
+        ${role==="admin"? `
+        <div class="item-actions">
+          <button class="btn-edit" onclick="editAngsuran('${id}')">Edit</button>
+          <button class="btn-delete" onclick="hapusAngsuran('${id}')">Hapus</button>
+        </div>
+        ` : ''}
       </div>
     `;
   });
